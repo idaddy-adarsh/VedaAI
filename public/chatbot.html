@@ -54,6 +54,35 @@
             font-size: 14px;
             line-height: 1.5;
         }
+        pre {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    padding: 10px;
+    border-radius: 5px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    font-family: monospace;
+    position: relative;
+}
+code {
+    font-family: monospace;
+}
+copy-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+}
+copy-button:hover {
+    background-color: #0056b3;
+}
+
         .chat-bubble.user {
             background: linear-gradient(135deg,  #2d79c0, #1f85b1, #0b3fb1);;
             color: #FFF;
@@ -63,6 +92,12 @@
             background: linear-gradient(135deg, #0b3fb1, #2d79c0, #1f85b1);;
             color: #000;
             align-self: flex-start;
+            display: inline-block;
+    max-width: 70%;
+    font-size: 14px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    white-space: pre-wrap
         }
         .chat-input-container {
             display: flex;
@@ -97,7 +132,14 @@
         }
     </style>
     <script>
-        async function sendMessage() {
+       async function typeResponse(element, text, speed = 10) {
+    for (let i = 0; i < text.length; i++) {
+        element.innerHTML += text[i];
+        await new Promise(resolve => setTimeout(resolve, speed)); // Delay between letters
+    }
+}
+
+async function sendMessage() {
     const messageInput = document.getElementById('message-input');
     const chatWindow = document.getElementById('chat-window');
     const userMessage = messageInput.value;
@@ -110,6 +152,13 @@
     chatWindow.appendChild(userBubble);
     messageInput.value = '';
 
+    // Show "typing..." indicator
+    const typingBubble = document.createElement('div');
+    typingBubble.classList.add('chat-bubble', 'assistant');
+    typingBubble.innerText = "VedaAI is thinking...";
+    chatWindow.appendChild(typingBubble);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+
     const response = await fetch('/api/message', {
         method: 'POST',
         headers: {
@@ -119,10 +168,34 @@
     });
 
     const data = await response.json();
+    
+    // Remove typing indicator before displaying actual response
+    chatWindow.removeChild(typingBubble);
 
+    // Create a new bubble for chatbot response
     const assistantBubble = document.createElement('div');
     assistantBubble.classList.add('chat-bubble', 'assistant');
+    chatWindow.appendChild(assistantBubble);
     assistantBubble.innerHTML = data.reply;
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+    // Add typing effect
+    await typeResponse(assistantBubble, data.reply);
+// Make code blocks copyable
+const codeBlocks = assistantBubble.querySelectorAll("pre code");
+codeBlocks.forEach((block) => {
+    const copyButton = document.createElement("copy-button");
+    copyButton.innerText = "Copy";
+    copyButton.style.marginLeft = "10px";
+    copyButton.style.cursor = "pointer";
+    copyButton.onclick = () => {
+        navigator.clipboard.writeText(block.innerText);
+        copyButton.innerText = "Copied!";
+        setTimeout(() => (copyButton.innerText = "Copy"), 2000);
+    };
+    block.parentElement.appendChild(copyButton);
+});
+
     chatWindow.appendChild(assistantBubble);
     chatWindow.scrollTop = chatWindow.scrollHeight;
 }

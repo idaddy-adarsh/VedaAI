@@ -6,8 +6,25 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const app = express();
 const port = 3000;
+
+const apiKey = process.env.GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(apiKey);
+
+const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    systemInstruction: "You are Veda AI, an intelligent chatbot from India designed to help in trading in the Indian stock market and for general use."
+});
+
+const generationConfig = {
+    temperature: 1,
+    topP: 0.95,
+    topK: 40,
+    maxOutputTokens: 8192,
+    responseMimeType: "text/plain",
+};
 
 app.use(bodyParser.json());
 app.use(express.static('public'));
@@ -82,32 +99,23 @@ app.get('/chat', isAuthenticated, (req, res) => {
     res.sendFile(__dirname + '/public/chatbot.html');
 });
 
-// Load API key from environment variables
-const API_KEY = process.env.GEMINI_API_KEY;
-
 // Handle chat messages
 app.post('/api/message', async (req, res) => {
-    const userMessage = req.body.message.toLowerCase();
-
-    // Custom response for "who are you?"
-    if (userMessage.includes("who are you")) {
-        return res.json({ reply: "I'm VedaAI, your intelligent chatbot assistant!" });
-    }
+    const userMessage = req.body.message;
 
     try {
-        const response = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`, {
-            contents: [
-                {
-                    parts: [{ text: userMessage }]
-                }
-            ]
+        const chatSession = model.startChat({
+            generationConfig,
+            history: [],
         });
 
-        let reply = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't understand that.";
+        const result = await chatSession.sendMessage(userMessage);
+        let reply = result.response.text();
 
-        // Detect if the response is code (basic check for code syntax like functions, classes, etc.)
+        // Detect if the response is code
         if (/(```|function |class |const |let |var |#include |<\?php)/.test(reply)) {
-            reply = `<pre><code>${reply}</code></pre>`;
+            reply = reply.replace(/```/g, ""); // Remove triple backticks if they exist
+            reply = `<pre><code>${reply.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>`;
         } else {
             // Format bold text if **text** pattern is found
             reply = reply.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
