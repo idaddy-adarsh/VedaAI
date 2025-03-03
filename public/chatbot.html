@@ -27,7 +27,7 @@
             backdrop-filter: blur(10px);
             animation: fadeIn 1s ease-in-out;
             text-align: center;
-            overflow:hidden ;
+            overflow: hidden; /* Hide scrollbars */
         }
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -44,6 +44,8 @@
             color: #000;
             display: flex;
             flex-direction: column;
+            overflow: hidden; /* Hide scrollbars */
+
         }
         .chat-bubble {
             background: #FFF;
@@ -133,11 +135,25 @@ copy-button:hover {
     </style>
     <script>
        async function typeResponse(element, text, speed = 10) {
-    for (let i = 0; i < text.length; i++) {
-        element.innerHTML += text[i];
-        await new Promise(resolve => setTimeout(resolve, speed)); // Delay between letters
+    element.innerHTML = ""; // Clear any existing content
+
+    let tempDiv = document.createElement("div");
+    tempDiv.innerHTML = text; // Parse HTML safely
+
+    for (let node of tempDiv.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            // Typing effect for normal text
+            for (let char of node.nodeValue) {
+                element.innerHTML += char;
+                await new Promise(resolve => setTimeout(resolve, speed));
+            }
+        } else {
+            // Directly append HTML tags like <b>, <i>, <code>, etc.
+            element.appendChild(node.cloneNode(true));
+        }
     }
 }
+
 
 async function sendMessage() {
     const messageInput = document.getElementById('message-input');
@@ -155,7 +171,7 @@ async function sendMessage() {
     // Show "typing..." indicator
     const typingBubble = document.createElement('div');
     typingBubble.classList.add('chat-bubble', 'assistant');
-    typingBubble.innerText = "VedaAI is thinking...";
+    typingBubble.innerText = "VedaAI is typing...";
     chatWindow.appendChild(typingBubble);
     chatWindow.scrollTop = chatWindow.scrollHeight;
 
@@ -168,8 +184,8 @@ async function sendMessage() {
     });
 
     const data = await response.json();
-    
-    // Remove typing indicator before displaying actual response
+
+    // Remove typing indicator
     chatWindow.removeChild(typingBubble);
 
     // Create a new bubble for chatbot response
@@ -178,8 +194,11 @@ async function sendMessage() {
     chatWindow.appendChild(assistantBubble);
     chatWindow.scrollTop = chatWindow.scrollHeight;
 
-    // Add typing effect
-    await typeResponse(assistantBubble.innerHTML, data.reply);
+    // Apply typing effect with HTML rendering
+    assistantBubble.innerHTML = ""; // Ensure it's empty before typing effect
+await typeResponse(assistantBubble, data.reply);
+
+
 // Make code blocks copyable
 const codeBlocks = assistantBubble.querySelectorAll("pre code");
 codeBlocks.forEach((block) => {
