@@ -176,11 +176,10 @@ async function sendMessage() {
     const assistantBubble = document.createElement('div');
     assistantBubble.classList.add('chat-bubble', 'assistant');
     chatWindow.appendChild(assistantBubble);
-    assistantBubble.innerHTML = data.reply;
     chatWindow.scrollTop = chatWindow.scrollHeight;
 
     // Add typing effect
-    await typeResponse(assistantBubble, data.reply);
+    await typeResponse(assistantBubble.innerHTML, data.reply);
 // Make code blocks copyable
 const codeBlocks = assistantBubble.querySelectorAll("pre code");
 codeBlocks.forEach((block) => {
