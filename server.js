@@ -102,7 +102,18 @@ app.get('/chat', isAuthenticated, (req, res) => {
 // Handle chat messages
 app.post('/api/message', async (req, res) => {
     const userMessage = req.body.message;
-
+    if (userMessage === "wtb" || userMessage.includes("what is wtb") || userMessage.includes("what is weak towards bottom")) {
+        return res.json({ reply: "<b>WTB or Weak Towards Bottom</b> is the second highest percentage in Volume or OI ,which should be more than 75% at the bottom which shows Bearish Pressure naturally(Not Shifted).<br>It is Indicated by yellow color." });
+    }
+    if (userMessage === "wtt" || userMessage.includes("what is wtt") || userMessage.includes("what is weak towards top")) {
+        return res.json({ reply: "<b>WTB or Weak Towards Top</b> is the second highest percentage in Volume or OI ,which should be more than 75% at the top side which shows Bullish Pressure naturally(Not Shifted).<br>It is Indicated by yellow color." });
+    }
+    if (userMessage === "strong" || userMessage.includes("what is strong") || userMessage.includes("what is strong in ltp calculator") ) {
+        return res.json({ reply: "When the <b>Second highest percentage</b> is not Bigger than 75% of the highest percentage the condition show that ,we can get a good reversal(expected) from there, this refers <strong><b>Strong</strong></b>" });
+    }
+    if (userMessage === "volume" || userMessage.includes("what is volume") || userMessage.includes("what is volume in ltp calculator") ) {
+        return res.json({ reply: "<b>Volume</b> in the stock market is the number of shares traded during a specific period of time.It is not decreased whole day and starts from zero another day, it helps to detemine the market" });
+    }
     try {
         const chatSession = model.startChat({
             generationConfig,
@@ -115,7 +126,6 @@ app.post('/api/message', async (req, res) => {
         // Detect if the response is code
         if (/(```|function |class |const |let |var |#include |<\?php)/.test(reply)) {
             reply = reply.replace(/```/g, ""); // Remove triple backticks if they exist
-            reply = `<pre><code>${reply.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>`;
         } else {
             // Format bold text if **text** pattern is found
             reply = reply.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
