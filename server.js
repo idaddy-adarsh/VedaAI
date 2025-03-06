@@ -112,8 +112,18 @@ app.post('/api/message', async (req, res) => {
         return res.json({ reply: "When the <b>Second highest percentage</b> is not Bigger than 75% of the highest percentage the condition show that ,we can get a good reversal(expected) from there, this refers <strong><b>Strong</strong></b>" });
     }
     if (userMessage === "volume" || userMessage.includes("what is volume") || userMessage.includes("what is volume in ltp calculator") ) {
-        return res.json({ reply: "<b>Volume</b> in the stock market is the number of shares traded during a specific period of time.It is not decreased whole day and starts from zero another day, it helps to detemine the market" });
+        return res.json({ reply: "<b>Volume</b> in the stock market is the number of lots traded during a specific period of time. It is not decreased whole day and starts from zero another day, it helps to detemine the market" });
     }
+    if (userMessage === "oi" || userMessage.includes("what is oi") || userMessage.includes("what is oi in ltp calculator") ) {
+        return res.json({ reply: "<b>OI</b> in the stock market is the number of lots active on a strike price. It is continued whole week and expire at the <b>Symbol's Expiry</b> and it is used to determine support and resitance" });
+    }
+    if (userMessage === "support" || userMessage.includes("what is support") || userMessage.includes("what is support in ltp calculator") ) {
+        return res.json({ reply: "Seeing to the pair of imaginary line, from the one <b>In The Money</b> to the <b>Out The Money</b> ,the highest OI or Volume near to the imaginary line in the put side is considered as <b>Support</b>" });
+    }
+    if (userMessage === "resistance" || userMessage.includes("what is resistance") || userMessage.includes("what is resistance in ltp calculator") ) {
+        return res.json({ reply: "Seeing to the pair of imaginary line, from the one <b>In The Money</b> to the <b>Out The Money</b> ,the highest OI or Volume near to the imaginary line in the call side is considered as <b>Resistance</b>" });
+    }
+
     try {
         const chatSession = model.startChat({
             generationConfig,
