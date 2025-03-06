@@ -123,6 +123,9 @@ app.post('/api/message', async (req, res) => {
     if (userMessage === "resistance" || userMessage.includes("what is resistance") || userMessage.includes("what is resistance in ltp calculator") ) {
         return res.json({ reply: "Seeing to the pair of imaginary line, from the one <b>In The Money</b> to the <b>Out The Money</b> ,the highest OI or Volume near to the imaginary line in the call side is considered as <b>Resistance</b>" });
     }
+    if (userMessage === "reversal" || userMessage.includes("what is reversal") || userMessage.includes("what is reversal in ltp calculator") ) {
+        return res.json({ reply: "When there is a specific place that we know that the market will reverse from there the thing is reffered as <b>Reversal</b>" });
+    }
 
     try {
         const chatSession = model.startChat({
