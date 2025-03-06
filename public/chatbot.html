@@ -333,7 +333,7 @@ copy-button:hover {
             // Add a read-aloud button next to the assistant's message
             const readAloudButton = document.createElement('button');
             readAloudButton.classList.add('read-aloud-button');
-            readAloudButton.innerHTML = "<img src='speak.jpg' style='border-radius: 100%; width:25px;'>";
+            readAloudButton.innerHTML = "<img src='/speak.jpg' style='border-radius: 100%; width:25px;'>";
             readAloudButton.onclick = () => {
                 const messageText = assistantBubble.innerText; // Get the text of the assistant's message
                 const hologram = document.getElementById('hologram');
