@@ -11,6 +11,8 @@ const multer = require('multer'); // For handling file uploads
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const app = express();
+const refreshToken = "1//04fzKrZG8KqroCgYIARAAGAQSNwF-L9Ir10VYufUQNpGW_ktEUbSXFrWziYnKkSfA_6I11tsLx3QrceVSkBQ1qaoHT65bAhq_1O4"
+const accessToken = "ya29.a0AeXRPp5HNGH80peZ5lXjqeTmJAu0JPGiEOk5XdF8FRLBmSWdSbNteJrfrXUUU5iIejOtur-P1pEhSygMxfsLyXVhUVac89NEhCKeKMGjozis-O4m3ATsAQrFY8i4oK35cyPTRKSak3bcDWDupx-NLhCxcNydg2655p0t3vEpaCgYKAfYSARISFQHGX2Mik9CGGGkAMFUXLTvr7-Hp2g0175"
 const port = 3000;
 
 // Set up multer for file uploads
@@ -82,58 +84,61 @@ passport.deserializeUser((id, done) => {
     done(null, user);
 });
 
-const qs = require("querystring");
-
-// Google Auth Callback Route
-app.get("/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: "/login" }),
-    async (req, res) => {
-        try {
-            const authCode = req.query.code; // Get authorization code from query
-
-            // Exchange auth code for access token
-            const tokenResponse = await axios.post(
-                "https://oauth2.googleapis.com/token",
-                qs.stringify({
-                    client_id: process.env.GOOGLE_CLIENT_ID,
-                    client_secret: process.env.GOOGLE_CLIENT_SECRET,
-                    code: authCode,
-                    grant_type: "authorization_code",
-                    redirect_uri: process.env.CALLBACK_URL,
-                }),
-                { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-            );
-
-            const { access_token, refresh_token } = tokenResponse.data;
-
-            // Fetch user info from Google
-            const userResponse = await axios.get(
-                "https://www.googleapis.com/oauth2/v2/userinfo",
-                { headers: { Authorization: `Bearer ${access_token}` } }
-            );
-
-            const userData = userResponse.data;
-
-            // Store user info in session
-            req.session.user = {
-                id: userData.id,
-                name: userData.name,
-                email: userData.email,
-                picture: userData.picture,
-                access_token,
-                refresh_token,
-            };
-
-            console.log("User logged in:", req.session.user);
-
-            // Redirect to chat or dashboard
-            res.redirect("/chat");
-        } catch (error) {
-            console.error("OAuth Error:", error.response?.data || error.message);
-            res.redirect("/login?error=oauth");
-        }
+// Set up Google Strategy
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "/auth/google/callback"
+},
+async function(accessToken, refreshToken, profile, done) {
+    const users = readUserData();
+    
+    // Check if user exists
+    let user = users.find(u => u.googleId === profile.id);
+    
+    if (!user) {
+        // Create new user if not exists
+        user = {
+            id: Date.now().toString(),
+            googleId: profile.id,
+            username: profile.displayName,
+            email: profile.emails[0].value,
+            profilePhoto: profile.photos[0].value || '/default-avatar.png'
+        };
+        users.push(user);
+        writeUserData(users);
     }
-);
+    
+    return done(null, user);
+}));
+
+const userFilePath = path.join(__dirname, 'user.json');
+
+function readUserData() {
+    try {
+        const data = fs.readFileSync(userFilePath, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        // If file doesn't exist or is invalid, return empty array
+        return [];
+    }
+}
+
+function writeUserData(users) {
+    fs.writeFileSync(userFilePath, JSON.stringify(users, null, 2));
+}
+
+// Google Auth Routes
+app.get('/auth/google',
+    passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+app.get('/auth/google/callback', 
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    function(req, res) {
+        // Successful authentication, redirect to chat
+        req.session.user = req.user;
+        res.redirect('/chat');
+    });
 
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
