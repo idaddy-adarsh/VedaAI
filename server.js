@@ -13,13 +13,25 @@ const port = process.env.PORT || 3000;
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
+
+// Use session middleware BEFORE Passport
+app.use(session({
+    secret: '1105cb3457b81b1ce28f74da8e9507fb5065cffbf0f2be45711a962f0b11138a86cd4915d202d9692bab4a8a3e744df17ae8af6bdb7a5b7f686aa98a7fb40e8f',  // Change this to a strong secret key
+    resave: false,
+    saveUninitialized: false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session()); // Enable session support for Passport
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 passport.use(new GoogleStrategy({
     clientID: GOOGLE_CLIENT_ID,
     clientSecret: GOOGLE_CLIENT_SECRET,
-    callbackURL: "/auth/google/callback"
+    callbackURL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/auth/google/callback"
+
 },
 async (accessToken, refreshToken, profile, done) => {
     let users = readUserData();
