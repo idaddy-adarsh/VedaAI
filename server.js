@@ -26,14 +26,13 @@ app.use(passport.session()); // Enable session support for Passport
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
 
 passport.use(new GoogleStrategy({
     clientID: GOOGLE_CLIENT_ID,
     clientSecret: GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL
-
-},
-async (accessToken, refreshToken, profile, done) => {
+    callbackURL: GOOGLE_CALLBACK_URL  // Ensure this matches the Google Cloud redirect URI
+}, async (accessToken, refreshToken, profile, done) => {
     let users = readUserData();
     let user = users.find(u => u.email === profile.emails[0].value);
 
@@ -47,10 +46,9 @@ async (accessToken, refreshToken, profile, done) => {
         users.push(user);
         writeUserData(users);
     }
-    
+
     return done(null, user);
 }));
-
 passport.serializeUser((user, done) => {
     done(null, user.email);
 });
