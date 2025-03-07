@@ -8,6 +8,8 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const multer = require('multer'); // For handling file uploads
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const app = express();
 const port = 3000;
 
@@ -65,16 +67,76 @@ app.use(session({
     saveUninitialized: false
 }));
 
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Passport configuration
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser((id, done) => {
+    const users = readUserData();
+    const user = users.find(u => u.id === id);
+    done(null, user);
+});
+
+// Set up Google Strategy
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "/auth/google/callback"
+},
+async function(accessToken, refreshToken, profile, done) {
+    const users = readUserData();
+    
+    // Check if user exists
+    let user = users.find(u => u.googleId === profile.id);
+    
+    if (!user) {
+        // Create new user if not exists
+        user = {
+            id: Date.now().toString(),
+            googleId: profile.id,
+            username: profile.displayName,
+            email: profile.emails[0].value,
+            profilePhoto: profile.photos[0].value || '/default-avatar.png'
+        };
+        users.push(user);
+        writeUserData(users);
+    }
+    
+    return done(null, user);
+}));
+
 const userFilePath = path.join(__dirname, 'user.json');
 
 function readUserData() {
-    const data = fs.readFileSync(userFilePath, 'utf-8');
-    return JSON.parse(data);
+    try {
+        const data = fs.readFileSync(userFilePath, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        // If file doesn't exist or is invalid, return empty array
+        return [];
+    }
 }
 
 function writeUserData(users) {
     fs.writeFileSync(userFilePath, JSON.stringify(users, null, 2));
 }
+
+// Google Auth Routes
+app.get('/auth/google',
+    passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+app.get('/auth/google/callback', 
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    function(req, res) {
+        // Successful authentication, redirect to chat
+        req.session.user = req.user;
+        res.redirect('/chat');
+    });
 
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -101,6 +163,7 @@ app.post('/api/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = { 
+        id: Date.now().toString(),
         username, 
         email, 
         password: hashedPassword,
@@ -153,6 +216,11 @@ function isAuthenticated(req, res, next) {
         res.redirect('/login');
     }
 }
+
+app.get('/logout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/login');
+});
 
 app.get('/home', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
