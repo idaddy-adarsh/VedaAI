@@ -24,6 +24,47 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session()); // Enable session support for Passport
 
+const GitHubStrategy = require('passport-github2').Strategy;
+
+// GitHub OAuth Credentials
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL;
+
+// GitHub OAuth Strategy
+passport.use(new GitHubStrategy({
+    clientID: GITHUB_CLIENT_ID,
+    clientSecret: GITHUB_CLIENT_SECRET,
+    callbackURL: GITHUB_CALLBACK_URL
+}, async (accessToken, refreshToken, profile, done) => {
+    let users = readUserData();
+    let user = users.find(u => u.githubId === profile.id);
+
+    if (!user) {
+        user = {
+            username: profile.username || profile.displayName,
+            email: profile.emails ? profile.emails[0].value : null, // Some GitHub users have no public email
+            githubId: profile.id,
+            profilePhoto: profile.photos[0].value || "/default-avatar.png"
+        };
+        users.push(user);
+        writeUserData(users);
+    }
+
+    return done(null, user);
+}));
+
+// GitHub Login Routes
+app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] }));
+
+app.get('/auth/github/callback',
+    passport.authenticate('github', { failureRedirect: '/login' }),
+    (req, res) => {
+        req.session.user = req.user;
+        res.redirect('/chat');
+    }
+);
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
