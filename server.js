@@ -13,6 +13,20 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const app = express();
 const port = 3000;
 
+const url = require('url');
+
+// Receive the callback from Google's OAuth 2.0 server.
+app.get('/oauth2callback', async (req, res) => {
+  let q = url.parse(req.url, true).query;
+
+  if (q.error) { // An error response e.g. error=access_denied
+    console.log('Error:' + q.error);
+  } else if (q.state !== req.session.state) { //check state value
+    console.log('State mismatch. Possible CSRF attack');
+    res.end('State mismatch. Possible CSRF attack');
+  } 
+});
+
 // Set up multer for file uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
