@@ -82,7 +82,6 @@ passport.deserializeUser((id, done) => {
     done(null, user);
 });
 
-const axios = require("axios");
 const qs = require("querystring");
 
 // Google Auth Callback Route
