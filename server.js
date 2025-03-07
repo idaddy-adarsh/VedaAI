@@ -9,6 +9,8 @@ const bcrypt = require('bcryptjs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const multer = require('multer'); // For handling file uploads
 const app = express();
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const port = 3000;
 
 // Set up multer for file uploads
