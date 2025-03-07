@@ -7,8 +7,38 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const multer = require('multer'); // For handling file uploads
 const app = express();
 const port = 3000;
+
+// Set up multer for file uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, 'public', 'uploads');
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5MB
+    fileFilter: function (req, file, cb) {
+        // Accept only image files
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+            return cb(new Error('Only image files are allowed!'), false);
+        }
+        cb(null, true);
+    }
+});
 
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -28,6 +58,7 @@ const generationConfig = {
 
 app.use(bodyParser.json());
 app.use(express.static('public'));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use(session({
     secret: 'secret-key',
     resave: false,
@@ -69,10 +100,50 @@ app.post('/api/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const user = { username, email, password: hashedPassword };
+    const user = { 
+        username, 
+        email, 
+        password: hashedPassword,
+        profilePhoto: '/default-avatar.png' // Default profile photo
+    };
     users.push(user);
     writeUserData(users);
     res.json({ success: true });
+});
+
+// Add profile photo upload endpoint
+app.post('/api/upload-profile-photo', isAuthenticated, upload.single('profilePhoto'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.json({ success: false, message: 'No file uploaded' });
+        }
+
+        const users = readUserData();
+        const userIndex = users.findIndex(u => u.username === req.session.user.username);
+        
+        if (userIndex === -1) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        // Get relative path for storing in JSON
+        const relativePath = '/uploads/' + path.basename(req.file.path);
+        
+        // Update user data with profile photo path
+        users[userIndex].profilePhoto = relativePath;
+        writeUserData(users);
+        
+        // Update session user data
+        req.session.user.profilePhoto = relativePath;
+        
+        res.json({ 
+            success: true, 
+            message: 'Profile photo uploaded successfully',
+            profilePhoto: relativePath
+        });
+    } catch (error) {
+        console.error('Error uploading profile photo:', error);
+        res.json({ success: false, message: 'Error uploading profile photo' });
+    }
 });
 
 function isAuthenticated(req, res, next) {
@@ -97,6 +168,15 @@ app.get('/register', (req, res) => {
 
 app.get('/chat', isAuthenticated, (req, res) => {
     res.sendFile(__dirname + '/public/chatbot.html');
+});
+
+// Add endpoint to get user profile info
+app.get('/api/user-profile', isAuthenticated, (req, res) => {
+    res.json({
+        username: req.session.user.username,
+        email: req.session.user.email,
+        profilePhoto: req.session.user.profilePhoto || '/default-avatar.png'
+    });
 });
 
 // Handle chat messages
