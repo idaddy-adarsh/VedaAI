@@ -8,9 +8,57 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const multer = require('multer'); // For handling file uploads
-const app = express();
+const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const port = 3000;
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Google OAuth Configuration
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const CALLBACK_URL = 'https://vedaai.onrender.com/auth/google/callback';
+
+// Set up passport for Google OAuth
+passport.use(new GoogleStrategy({
+    clientID: GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    callbackURL: CALLBACK_URL,
+    passReqToCallback: true
+  },
+  function(req, accessToken, refreshToken, profile, done) {
+    // Check if user exists in our system
+    const users = readUserData();
+    let user = users.find(u => u.googleId === profile.id);
+    
+    if (!user) {
+      // Create new user with Google profile
+      const newUser = {
+        googleId: profile.id,
+        username: profile.displayName,
+        email: profile.emails && profile.emails[0] ? profile.emails[0].value : '',
+        profilePhoto: profile.photos && profile.photos[0] ? profile.photos[0].value : '/default-avatar.png'
+      };
+      
+      users.push(newUser);
+      writeUserData(users);
+      user = newUser;
+    }
+    
+    return done(null, user);
+  }
+));
+
+// Serialize user ID for session
+passport.serializeUser((user, done) => {
+  done(null, user.googleId || user.username);
+});
+
+// Deserialize user from session
+passport.deserializeUser((id, done) => {
+  const users = readUserData();
+  const user = users.find(u => u.googleId === id || u.username === id);
+  done(null, user);
+});
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -61,90 +109,61 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use(session({
-    secret: 'secret-key',
+    secret: process.env.SESSION_SECRET || 'secret-key',
     resave: false,
-    saveUninitialized: false
-}));
-
-const passport = require('passport');
-
-// Configure Passport to use Google OAuth2
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/auth/google/callback"
-},
-async (accessToken, refreshToken, profile, done) => {
-    const users = readUserData();
-    let user = users.find(u => u.googleId === profile.id);
-
-    if (!user) {
-        // Create a new user if they don't exist
-        user = {
-            googleId: profile.id,
-            username: profile.displayName,
-            email: profile.emails[0].value,
-            profilePhoto: profile.photos[0].value || '/default-avatar.png'
-        };
-        users.push(user);
-        writeUserData(users);
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
-
-    done(null, user);
 }));
 
-// Serialize and deserialize user
-passport.serializeUser((user, done) => {
-    done(null, user);
-});
-
-passport.deserializeUser((user, done) => {
-    done(null, user);
-});
-
-// Initialize Passport
+// Initialize Passport and restore authentication state from session
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Google OAuth2 routes
-app.get('/auth/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-app.get('/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: '/login' }),
-    (req, res) => {
-        // Successful authentication, redirect to chat
-        res.redirect('/chat');
-    }
-);
-
-// Update the login route to include Google Sign-In button
-app.get('/login', (req, res) => {
-    res.sendFile(__dirname + '/public/login.html', {
-        googleClientId: process.env.GOOGLE_CLIENT_ID
-    });
-});
-
 const userFilePath = path.join(__dirname, 'user.json');
 
+// Ensure user.json exists
+if (!fs.existsSync(userFilePath)) {
+    fs.writeFileSync(userFilePath, JSON.stringify([]));
+}
+
 function readUserData() {
-    const data = fs.readFileSync(userFilePath, 'utf-8');
-    return JSON.parse(data);
+    try {
+        const data = fs.readFileSync(userFilePath, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('Error reading user data:', error);
+        return [];
+    }
 }
 
 function writeUserData(users) {
     fs.writeFileSync(userFilePath, JSON.stringify(users, null, 2));
 }
 
+// Google Auth Routes
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect to chat
+    res.redirect('/chat');
+  });
+
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     const users = readUserData();
     const user = users.find(u => u.username === username);
 
-    if (user && await bcrypt.compare(password, user.password)) {
-        req.session.user = user;
-        res.json({ success: true });
+    if (user && user.password && await bcrypt.compare(password, user.password)) {
+        req.login(user, function(err) {
+            if (err) { return res.json({ success: false, message: 'Authentication failed' }); }
+            return res.json({ success: true });
+        });
     } else {
         res.json({ success: false, message: 'Invalid credentials' });
     }
@@ -172,6 +191,14 @@ app.post('/api/register', async (req, res) => {
     res.json({ success: true });
 });
 
+// Logout route
+app.get('/logout', (req, res) => {
+    req.logout(function(err) {
+        if (err) { return next(err); }
+        res.redirect('/login');
+    });
+});
+
 // Add profile photo upload endpoint
 app.post('/api/upload-profile-photo', isAuthenticated, upload.single('profilePhoto'), (req, res) => {
     try {
@@ -180,7 +207,8 @@ app.post('/api/upload-profile-photo', isAuthenticated, upload.single('profilePho
         }
 
         const users = readUserData();
-        const userIndex = users.findIndex(u => u.username === req.session.user.username);
+        const userIndex = users.findIndex(u => (u.googleId && u.googleId === req.user.googleId) || 
+                                             (!u.googleId && u.username === req.user.username));
         
         if (userIndex === -1) {
             return res.json({ success: false, message: 'User not found' });
@@ -192,9 +220,6 @@ app.post('/api/upload-profile-photo', isAuthenticated, upload.single('profilePho
         // Update user data with profile photo path
         users[userIndex].profilePhoto = relativePath;
         writeUserData(users);
-        
-        // Update session user data
-        req.session.user.profilePhoto = relativePath;
         
         res.json({ 
             success: true, 
@@ -208,35 +233,43 @@ app.post('/api/upload-profile-photo', isAuthenticated, upload.single('profilePho
 });
 
 function isAuthenticated(req, res, next) {
-    if (req.session.user) {
+    if (req.isAuthenticated()) {
         return next();
     } else {
         res.redirect('/login');
     }
 }
 
+app.get('/', (req, res) => {
+    if (req.isAuthenticated()) {
+        res.redirect('/chat');
+    } else {
+        res.redirect('/login');
+    }
+});
+
 app.get('/home', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/login', (req, res) => {
-    res.sendFile(__dirname + '/public/login.html');
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 app.get('/register', (req, res) => {
-    res.sendFile(__dirname + '/public/register.html');
+    res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
 app.get('/chat', isAuthenticated, (req, res) => {
-    res.sendFile(__dirname + '/public/chatbot.html');
+    res.sendFile(path.join(__dirname, 'public', 'chatbot.html'));
 });
 
 // Add endpoint to get user profile info
 app.get('/api/user-profile', isAuthenticated, (req, res) => {
     res.json({
-        username: req.session.user.username,
-        email: req.session.user.email,
-        profilePhoto: req.session.user.profilePhoto || '/default-avatar.png'
+        username: req.user.username,
+        email: req.user.email,
+        profilePhoto: req.user.profilePhoto || '/default-avatar.png'
     });
 });
 
@@ -292,6 +325,11 @@ app.post('/api/message', async (req, res) => {
     }
 });
 
+// Ensuring all routes are handled before the 404
+app.use((req, res) => {
+    res.status(404).send('Page not found');
+});
+
 app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    console.log(`Server is running on port ${port}`);
 });
