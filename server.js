@@ -8,11 +8,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const multer = require('multer'); // For handling file uploads
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const app = express();
-const refreshToken = "1//04fzKrZG8KqroCgYIARAAGAQSNwF-L9Ir10VYufUQNpGW_ktEUbSXFrWziYnKkSfA_6I11tsLx3QrceVSkBQ1qaoHT65bAhq_1O4"
-const accessToken = "ya29.a0AeXRPp5HNGH80peZ5lXjqeTmJAu0JPGiEOk5XdF8FRLBmSWdSbNteJrfrXUUU5iIejOtur-P1pEhSygMxfsLyXVhUVac89NEhCKeKMGjozis-O4m3ATsAQrFY8i4oK35cyPTRKSak3bcDWDupx-NLhCxcNydg2655p0t3vEpaCgYKAfYSARISFQHGX2Mik9CGGGkAMFUXLTvr7-Hp2g0175"
 const port = 3000;
 
 // Set up multer for file uploads
@@ -69,37 +65,22 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// Initialize Passport
-app.use(passport.initialize());
-app.use(passport.session());
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
-// Passport configuration
-passport.serializeUser((user, done) => {
-    done(null, user.id);
-});
-
-passport.deserializeUser((id, done) => {
-    const users = readUserData();
-    const user = users.find(u => u.id === id);
-    done(null, user);
-});
-
-// Set up Google Strategy
+// Configure Passport to use Google OAuth2
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "/auth/google/callback"
+    callbackURL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/auth/google/callback"
 },
-async function(accessToken, refreshToken, profile, done) {
+async (accessToken, refreshToken, profile, done) => {
     const users = readUserData();
-    
-    // Check if user exists
     let user = users.find(u => u.googleId === profile.id);
-    
+
     if (!user) {
-        // Create new user if not exists
+        // Create a new user if they don't exist
         user = {
-            id: Date.now().toString(),
             googleId: profile.id,
             username: profile.displayName,
             email: profile.emails[0].value,
@@ -108,37 +89,53 @@ async function(accessToken, refreshToken, profile, done) {
         users.push(user);
         writeUserData(users);
     }
-    
-    return done(null, user);
+
+    done(null, user);
 }));
+
+// Serialize and deserialize user
+passport.serializeUser((user, done) => {
+    done(null, user);
+});
+
+passport.deserializeUser((user, done) => {
+    done(null, user);
+});
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Google OAuth2 routes
+app.get('/auth/google',
+    passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get('/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    (req, res) => {
+        // Successful authentication, redirect to chat
+        res.redirect('/chat');
+    }
+);
+
+// Update the login route to include Google Sign-In button
+app.get('/login', (req, res) => {
+    res.sendFile(__dirname + '/public/login.html', {
+        googleClientId: process.env.GOOGLE_CLIENT_ID
+    });
+});
 
 const userFilePath = path.join(__dirname, 'user.json');
 
 function readUserData() {
-    try {
-        const data = fs.readFileSync(userFilePath, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        // If file doesn't exist or is invalid, return empty array
-        return [];
-    }
+    const data = fs.readFileSync(userFilePath, 'utf-8');
+    return JSON.parse(data);
 }
 
 function writeUserData(users) {
     fs.writeFileSync(userFilePath, JSON.stringify(users, null, 2));
 }
-
-// Google Auth Routes
-app.get('/auth/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-app.get('/auth/google/callback', 
-    passport.authenticate('google', { failureRedirect: '/login' }),
-    function(req, res) {
-        // Successful authentication, redirect to chat
-        req.session.user = req.user;
-        res.redirect('/chat');
-    });
 
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -165,7 +162,6 @@ app.post('/api/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = { 
-        id: Date.now().toString(),
         username, 
         email, 
         password: hashedPassword,
@@ -218,11 +214,6 @@ function isAuthenticated(req, res, next) {
         res.redirect('/login');
     }
 }
-
-app.get('/logout', (req, res) => {
-    req.session.destroy();
-    res.redirect('/login');
-});
 
 app.get('/home', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
