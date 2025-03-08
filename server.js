@@ -224,7 +224,7 @@ app.post('/api/register', async (req, res) => {
             from: 'unknownplayers0007@gmail.com',
             to: email,
             subject: 'Your OTP Code',
-            text: `Your OTP code is: ${otp}. It expires in 5 minutes.`,
+            text: `Your OTP code for registering to VedaAI is: ${otp}. It expires in 5 minutes.`,
         });
 
         res.json({ success: true, message: 'OTP sent to email. Please verify.' });
