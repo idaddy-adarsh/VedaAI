@@ -216,15 +216,15 @@ app.post('/api/register', async (req, res) => {
 
     // Generate a 6-digit OTP
     const otp = crypto.randomInt(100000, 999999).toString();
-    otpStorage[email] = { otp, expires: Date.now() + 5 * 60000 }; // Valid for 5 minutes
+    otpStorage[email] = { otp, expires: Date.now() + 10 * 60000 }; // Valid for 5 minutes
 
     // Send OTP via email
     try {
         await transporter.sendMail({
-            from: 'unknownplayers0007@gmail.com',
+            from: 'VedaAI',
             to: email,
-            subject: 'Your OTP Code',
-            text: `Your OTP code for registering to VedaAI is: ${otp}. It expires in 5 minutes.`,
+            subject: 'Your OTP Code For VedaAI',
+            text: `Your OTP code for registering to VedaAI is: ${otp}. It expires in 10 minutes.`,
         });
 
         res.json({ success: true, message: 'OTP sent to email. Please verify.' });
