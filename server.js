@@ -12,6 +12,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 
 // Use session middleware BEFORE Passport
@@ -23,6 +25,17 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session()); // Enable session support for Passport
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'unknownplayers0007@gmail.com',
+        pass: 'rrrc swti cqrz ygki' // Use App Password, not your real Gmail password
+    }
+});
+
+let otpStorage = {}; // Temporary storage for OTPs
+
 
 const GitHubStrategy = require('passport-github2').Strategy;
 
@@ -193,28 +206,54 @@ app.post('/api/login', async (req, res) => {
         res.json({ success: false, message: 'Invalid credentials' });
     }
 });
-
 app.post('/api/register', async (req, res) => {
     const { username, email, password } = req.body;
     const users = readUserData();
 
-    if (users.some(u => u.username === username || u.email === email)) {
-        return res.json({ success: false, message: 'Username or email already exists' });
+    if (users.some(u => u.email === email)) {
+        return res.json({ success: false, message: 'Email already registered' });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Generate a 6-digit OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    otpStorage[email] = { otp, expires: Date.now() + 5 * 60000 }; // Valid for 5 minutes
 
-    const user = { 
-        username, 
-        email, 
-        password: hashedPassword,
-        profilePhoto: '/default-avatar.png' // Default profile photo
-    };
+    // Send OTP via email
+    try {
+        await transporter.sendMail({
+            from: 'unknownplayers0007@gmail.com',
+            to: email,
+            subject: 'Your OTP Code',
+            text: `Your OTP code is: ${otp}. It expires in 5 minutes.`,
+        });
+
+        res.json({ success: true, message: 'OTP sent to email. Please verify.' });
+    } catch (error) {
+        console.error("Error sending email:", error);
+        res.json({ success: false, message: 'Error sending OTP' });
+    }
+});
+
+app.post('/api/verify-otp', async (req, res) => {
+    const { username, email, password, otp } = req.body;
+
+    // Check if OTP is valid
+    if (!otpStorage[email] || otpStorage[email].otp !== otp || Date.now() > otpStorage[email].expires) {
+        return res.json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    delete otpStorage[email]; // Remove OTP after verification
+
+    // Hash password and save user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = { username, email, profilePhoto: '/default-avatar.png', password: hashedPassword };
+    const users = readUserData();
     users.push(user);
     writeUserData(users);
-    res.json({ success: true });
+    
+    res.json({ success: true, message: 'Registration complete! You can now log in.' });
 });
+
 
 // Add profile photo upload endpoint
 app.post('/api/upload-profile-photo', isAuthenticated, upload.single('profilePhoto'), (req, res) => {
