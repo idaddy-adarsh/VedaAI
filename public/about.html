@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Veda Gen</title>
+  <style>
+    /* General Styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, #399fb6, #132a4d, #03164e);
+  padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+  color: #ffffff;
+  line-height: 1.6;
+}
+
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 40px;
+  background: rgba(10, 25, 47, 0.9); /* Dark blue with transparency */
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+nav .logo {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #64ffda; /* Teal accent color */
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 20px;
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: #ffffff;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+nav ul li a:hover {
+  color: #64ffda; /* Teal accent color */
+}
+
+.container {
+  padding: 40px;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #ffffff;
+  animation: fadeInDown 1s ease;
+}
+
+header .tagline {
+  font-size: 1.2rem;
+  color: #8892b0; /* Light gray for text */
+  margin-bottom: 30px;
+  animation: fadeInUp 1s ease;
+}
+
+.search-box {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  animation: fadeIn 1.5s ease;
+}
+
+input {
+  padding: 12px;
+  width: 70%;
+  max-width: 500px;
+  border: 2px solid #64ffda; /* Teal accent color */
+  border-radius: 8px;
+  font-size: 1rem;
+  background: transparent;
+  color: #ffffff;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+input::placeholder {
+  color: #8892b0; /* Light gray for placeholder */
+}
+
+input:focus {
+  border-color: #00b4db; /* Blue accent color */
+}
+
+button {
+  padding: 12px 25px;
+  background: #64ffda; /* Teal accent color */
+  color: #0a192f; /* Dark blue text */
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+button:hover {
+  background: #00b4db; /* Blue accent color */
+  transform: translateY(-2px);
+}
+
+#loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+  animation: fadeIn 1s ease;
+}
+
+.loader {
+  border: 4px solid #64ffda; /* Teal accent color */
+  border-top: 4px solid transparent;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+  animation: fadeIn 1.5s ease;
+}
+
+.image-grid img {
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.image-grid img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+#error {
+  color: #ff6b6b; /* Red for error messages */
+  font-size: 1.1rem;
+  margin-top: 20px;
+  display: none;
+  animation: fadeIn 1s ease;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  nav {
+    padding: 15px 20px;
+  }
+
+  .container {
+    padding: 20px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+  }
+
+  header .tagline {
+    font-size: 1rem;
+  }
+
+  input {
+    width: 100%;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  .image-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}/* General Styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background: #0a192f; /* Dark blue background */
+  color: #ffffff;
+  line-height: 1.6;
+}
+
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 40px;
+  background: rgba(10, 25, 47, 0.9); /* Dark blue with transparency */
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+nav .logo {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #64ffda; /* Teal accent color */
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 20px;
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: #ffffff;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+nav ul li a:hover {
+  color: #64ffda; /* Teal accent color */
+}
+
+.container {
+  padding: 40px;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #ffffff;
+  animation: fadeInDown 1s ease;
+}
+
+header .tagline {
+  font-size: 1.2rem;
+  color: #8892b0; /* Light gray for text */
+  margin-bottom: 30px;
+  animation: fadeInUp 1s ease;
+}
+
+.search-box {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  animation: fadeIn 1.5s ease;
+}
+
+input {
+  padding: 12px;
+  width: 70%;
+  max-width: 500px;
+  border: 2px solid #64ffda; /* Teal accent color */
+  border-radius: 8px;
+  font-size: 1rem;
+  background: transparent;
+  color: #ffffff;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+input::placeholder {
+  color: #8892b0; /* Light gray for placeholder */
+}
+
+input:focus {
+  border-color: #00b4db; /* Blue accent color */
+}
+
+button {
+  padding: 12px 25px;
+  background: #64ffda; /* Teal accent color */
+  color: #0a192f; /* Dark blue text */
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+button:hover {
+  background: #00b4db; /* Blue accent color */
+  transform: translateY(-2px);
+}
+
+#loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+  animation: fadeIn 1s ease;
+}
+
+.loader {
+  border: 4px solid #64ffda; /* Teal accent color */
+  border-top: 4px solid transparent;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+  animation: fadeIn 1.5s ease;
+}
+
+.image-grid img {
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.image-grid img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+#error {
+  color: #ff6b6b; /* Red for error messages */
+  font-size: 1.1rem;
+  margin-top: 20px;
+  display: none;
+  animation: fadeIn 1s ease;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  nav {
+    padding: 15px 20px;
+  }
+
+  .container {
+    padding: 20px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+  }
+
+  header .tagline {
+    font-size: 1rem;
+  }
+
+  input {
+    width: 100%;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  .image-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body style="background: linear-gradient();">
+  <nav>
+    <div class="logo">Veda Gen</div>
+  </nav>
+  <div class="container about-container">
+    <h1>About Veda Gen</h1>
+    <br>
+    <a href="/vedagen">
+<button>Generate</button>
+</a>
+<br><br>
+    <p>
+      Veda Gen is an AI-powered image generator designed to bring your ideas to life. Whether you're a designer, artist, or just someone looking for inspiration, Veda Gen helps you create stunning visuals with ease. Simply enter a prompt, and our AI will generate a unique image tailored to your needs.
+    </p>
+    <p>
+      Built with cutting-edge technology and a user-friendly interface, Veda Gen is your go-to tool for creative exploration. From abstract art to realistic landscapes, the possibilities are endless.
+    </p>
+  </div>
+</body>
+</html>

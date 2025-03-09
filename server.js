@@ -306,6 +306,14 @@ app.get('/login', (req, res) => {
     res.sendFile(__dirname + '/public/login.html');
 });
 
+app.get('/gen', (req, res) => {
+    res.sendFile(__dirname + '/public/about.html');
+});
+
+app.get('/vedagen', (req, res) => {
+    res.sendFile(__dirname + '/public/gen.html');
+});
+
 app.get('/register', (req, res) => {
     res.sendFile(__dirname + '/public/register.html');
 });
